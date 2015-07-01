@@ -23,6 +23,7 @@ __BEGIN_DECLS
 #include <libcgroup.h>
 #include <limits.h>
 #include <pthread.h>
+#include <regex.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <setjmp.h>
@@ -130,6 +131,7 @@ struct cgroup_rule {
 	uid_t uid;
 	gid_t gid;
 	char *procname;
+	regex_t procname_regex;
 	char username[LOGIN_NAME_MAX];
 	char destination[FILENAME_MAX];
 	char *controllers[MAX_MNT_ELEMENTS];

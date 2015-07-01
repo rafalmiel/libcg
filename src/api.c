@@ -400,6 +400,7 @@ static void cgroup_free_rule(struct cgroup_rule *r)
 	}
 	if (r->procname) {
 		free(r->procname);
+		regfree(&r->procname_regex);
 		r->procname = NULL;
 	}
 	/* We must free any used controller strings, too. */
@@ -729,6 +730,15 @@ static int cgroup_parse_rules_file(char *filename, bool cache, uid_t muid,
 		strncpy(newrule->username, user, len_username);
 		if (len_procname) {
 			newrule->procname = strdup(procname);
+			if (regcomp(&newrule->procname_regex, procname, 0)) {
+				cgroup_err("Error: regcomp failed to compile "
+					   "regex %s: %s\n",
+					   procname, strerror(errno));
+				free(newrule);
+				last_errno = errno;
+				ret = ECGOTHER;
+				goto close;
+			}
 			if (!newrule->procname) {
 				cgroup_err("Error: strdup failed to allocate memory %s\n",
 						strerror(errno));
@@ -2829,11 +2839,11 @@ static struct cgroup_rule *cgroup_find_matching_rule(uid_t uid,
 		if (!ret->procname)
 			/* If no process name in a rule, that means wildcard */
 			break;
-		if (!strcmp(ret->procname, procname))
+		if (!regexec(&ret->procname_regex, procname, 0, NULL, 0))
 			break;
 
 		base = cgroup_basename(procname);
-		if (!strcmp(ret->procname, base))
+		if (!regexec(&ret->procname_regex, base, 0, NULL, 0))
 			/* Check a rule of basename. */
 			break;
 		ret = ret->next;
